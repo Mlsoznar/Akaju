@@ -11,11 +11,7 @@
     color: white !important;
   }
   
-  /* Navbar Arka Plan ve Tasarım */
-  /*.menu-item {
-    transition: all 0.3s ease; /* Geçiş animasyonu 
-  }*/
-  
+
   .menu-item a {
     font-size: 14px !important; /* Menü yazı boyutu */
   }
