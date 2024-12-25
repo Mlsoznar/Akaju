@@ -1,0 +1,22 @@
+/* Navbar Menü Seçenekleri */
+.ant-menu-dark .ant-menu-item {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    transition: all 0.3s ease;
+  }
+  
+  .ant-menu-dark .ant-menu-item:hover {
+    background-color: #1677FF !important; /* Hover rengi */
+    border-radius: 8px !important; /* Oval görünüm */
+    color: white !important;
+  }
+  
+  /* Navbar Arka Plan ve Tasarım */
+  /*.menu-item {
+    transition: all 0.3s ease; /* Geçiş animasyonu 
+  }*/
+  
+  .menu-item a {
+    font-size: 14px !important; /* Menü yazı boyutu */
+  }
+  
