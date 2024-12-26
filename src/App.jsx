@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
-// import Stations from './components/Stations';
+import Stations from './components/Stations';
 import Orders from './components/Orders';
 import Users from './components/Users';
 import Products from './components/Products';
@@ -16,8 +16,8 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          {/* <Route path="/stations" element={<Stations />} /> */}
           <Route path="/orders" element={<Orders />} />
+          <Route path="/stations" element={<Stations />} />
           <Route path="/users" element={<Users />} />
           <Route path="/products" element={<Products />} />
           <Route path="/notificationList" element={<NotificationList />} />
@@ -29,3 +29,6 @@ function App() {
 }
 
 export default App;
+
+
+

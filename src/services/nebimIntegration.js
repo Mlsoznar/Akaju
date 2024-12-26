@@ -44,12 +44,17 @@ const mockProducts = [
 
 const mockRecipes = {
   101: [
-    { material: 'Menteşe', amount: 4, stock: 100 },
-    { material: 'Ahşap', amount: 20, stock: 200 },
+    { material: 'Ahşap', amount: 4, stock: 100 },
+    { material: 'Dolap Kapağı', amount: 20, stock: 200 },
+    { material: 'Dolap', amount: 21, stock: 200 },
+   
+    
   ],
   102: [
-    { material: 'Vida', amount: 10, stock: 50 },
-    { material: 'Ahşap', amount: 15, stock: 200 },
+    { material: 'Kesilmiş Ahşap', amount: 4, stock: 100 },
+    { material: 'Ahşap', amount: 20, stock: 200 },
+    { material: 'Boyanmış Ahşap', amount: 21, stock: 200 },
+
   ],
 };
 

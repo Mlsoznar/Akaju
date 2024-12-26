@@ -102,104 +102,84 @@
 
 
 
-// import React, { useState, useEffect } from 'react';
-// import { Table, Button } from 'antd';
-// import { getStations, updateStation } from '../services/api'; // api.js'den updateStation fonksiyonunu kullanacağız
+import React, { useState } from 'react';
+import { Card, Button, Modal, Form, Input, Select } from 'antd';
+import '../styles/style.css';
 
-// const Stations = ({ stationStatuses, updateStationStatusCallback }) => {
-//   const [stations, setStations] = useState([]);
+const { Option } = Select;
 
-//   useEffect(() => {
-//     fetchStations();
-//   }, []);
+const Stations = () => {
+  const [stations, setStations] = useState([]); // İstasyonlar listesi
+  const [users] = useState([
+    { id: 1, username: 'depo_sorumlusu', role: 'Depo Sorumlusu' },
+    { id: 2, username: 'uretim_sorumlusu', role: 'Üretim Sorumlusu' },
+    { id: 3, username: 'saha_sorumlusu_1', role: 'Saha Sorumlusu' },
+    { id: 4, username: 'saha_sorumlusu_2', role: 'Saha Sorumlusu' },
+    { id: 5, username: 'saha_sorumlusu_3', role: 'Saha Sorumlusu' },
+  ]); // Kullanıcı listesi
 
-//   const fetchStations = async () => {
-//     // İstasyonları API'den çekme (bu örnekte sabit veri kullandık)
-//     const stationsData = await getStations();
-//     setStations(stationsData);
-//   };
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [newStation, setNewStation] = useState({ name: '', responsible: '' });
 
-//   const handleStartProcess = async (stationId) => {
-//     const updatedStation = { status: 'Başladı' }; // Durumu güncelliyoruz
+  const handleAddStation = () => {
+    if (newStation.name && newStation.responsible) {
+      setStations([...stations, { ...newStation, id: Date.now() }]);
+      setNewStation({ name: '', responsible: '' });
+      setIsModalVisible(false);
+    }
+  };
 
-//     // İstasyonun durumunu API'ye güncellemek
-//     await updateStation(stationId, updatedStation);
+  return (
+    <div style={{ padding: '20px' }}>
+      <h2>İstasyon Yönetimi</h2>
 
-//     // Durumun güncellendiğini UI'da yansıtmak için:
-//     setStations((prevStations) =>
-//       prevStations.map((station) =>
-//         station.id === stationId ? { ...station, status: 'Başladı' } : station
-//       )
-//     );
+      <Button type="primary" onClick={() => setIsModalVisible(true)} style={{ marginBottom: 16 }}>
+        İstasyon Ekle
+      </Button>
 
-//     // Durumu callback ile üst component'e bildir
-//     updateStationStatusCallback(stationId, 'Başladı');
-//   };
+      <div className="stations-container">
+        {stations.map((station) => (
+          <Card key={station.id} title={station.name} className="station-card">
+            <p><strong>Sorumlu:</strong> {station.responsible}</p>
+          </Card>
+        ))}
+      </div>
 
-//   const handleCompleteProcess = async (stationId) => {
-//     const updatedStation = { status: 'Tamamlandı' }; // Durumu "Tamamlandı" olarak güncelliyoruz
+      <Modal
+        title="Yeni İstasyon"
+        visible={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        onOk={handleAddStation}
+      >
+        <Form layout="vertical">
+          <Form.Item label="İstasyon Adı" required>
+            <Input
+              value={newStation.name}
+              onChange={(e) => setNewStation({ ...newStation, name: e.target.value })}
+              placeholder="İstasyon adını giriniz"
+            />
+          </Form.Item>
 
-//     // İstasyonun durumunu API'ye güncellemek
-//     await updateStation(stationId, updatedStation);
+          <Form.Item label="Sorumlu" required>
+            <Select
+              value={newStation.responsible}
+              onChange={(value) => setNewStation({ ...newStation, responsible: value })}
+              placeholder="Sorumlu kullanıcı seçiniz"
+            >
+              {users.map((user) => (
+                <Option key={user.id} value={user.username}>
+                  {user.username} ({user.role})
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
 
-//     // Durumun güncellendiğini UI'da yansıtmak için:
-//     setStations((prevStations) =>
-//       prevStations.map((station) =>
-//         station.id === stationId ? { ...station, status: 'Tamamlandı' } : station
-//       )
-//     );
+export default Stations;
 
-//     // Durumu callback ile üst component'e bildir
-//     updateStationStatusCallback(stationId, 'Tamamlandı');
-//   };
-
-//   const columns = [
-//     {
-//       title: 'İstasyon Adı',
-//       dataIndex: 'name',
-//       key: 'name',
-//     },
-//     {
-//       title: 'Durum',
-//       dataIndex: 'status',
-//       key: 'status',
-//       render: (text, record) => (
-//         <span style={{ color: text === 'Başladı' ? 'green' : text === 'Tamamlandı' ? 'blue' : 'red' }}>
-//           {text}
-//         </span>
-//       ),
-//     },
-//     {
-//       title: 'İşlem',
-//       key: 'action',
-//       render: (_, record) => (
-//         <div>
-//           <Button
-//             onClick={() => handleStartProcess(record.id)}
-//             disabled={record.status === 'Başladı' || record.status === 'Tamamlandı'}
-//             style={{ marginRight: '10px' }}
-//           >
-//             Başlat
-//           </Button>
-//           <Button
-//             onClick={() => handleCompleteProcess(record.id)}
-//             disabled={record.status !== 'Başladı'}
-//           >
-//             Tamamlandı
-//           </Button>
-//         </div>
-//       ),
-//     },
-//   ];
-
-//   return (
-//     <div style={{ padding: '20px' }}>
-//       <h2>İstasyonlar</h2>
-//       <Table dataSource={stations} columns={columns} rowKey="id" />
-//     </div>
-//   );
-// };
-
-// export default Stations;
 
 

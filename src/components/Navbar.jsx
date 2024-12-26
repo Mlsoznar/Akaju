@@ -76,6 +76,11 @@ const Navbar = () => {
               İş Emirleri
             </Link>
           </Menu.Item>
+          <Menu.Item key="stations" className="menu-item">
+            <Link to="/stations" style={{ textDecoration: 'none', color: 'inherit', margin:'20px' }}>
+              İstasyonlar
+            </Link>
+          </Menu.Item>
           <Menu.Item key="users" className="menu-item">
             <Link to="/users" style={{ textDecoration: 'none', color: 'inherit', margin:'20px' }}>
               Kullanıcılar

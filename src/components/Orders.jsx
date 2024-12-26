@@ -13,6 +13,8 @@ import {
   Popconfirm,
   Row,
   Col,
+  Checkbox,
+  message,
 } from "antd";
 import {
   fetchProductsFromNebim,
@@ -29,71 +31,21 @@ const Orders = () => {
   const [quantity, setQuantity] = useState(1);
   const [stockStatus, setStockStatus] = useState([]);
   const [orderError, setOrderError] = useState(null);
-  const [missingProducts, setMissingProducts] = useState([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isProductionModalVisible, setIsProductionModalVisible] =
-    useState(false);
+  const [isProductionModalVisible, setIsProductionModalVisible] = useState(false);
+  const [isMissingProductsModalVisible, setIsMissingProductsModalVisible] = useState(false);
   const [productionDetails, setProductionDetails] = useState({});
   const [isStationModalVisible, setIsStationModalVisible] = useState(false);
   const [stations, setStations] = useState([]);
-  const [editingStation, setEditingStation] = useState(null);
-  const [form] = Form.useForm();
-  const [users, setUsers] = useState([
-    { id: 1, username: "saha_sorumlusu_1", role: "Saha Sorumlusu" },
-    { id: 2, username: "saha_sorumlusu_2", role: "Saha Sorumlusu" },
-    { id: 3, username: "saha_sorumlusu_3", role: "Saha Sorumlusu" },
-  ]);
-
-  const [orders, setOrders] = useState([
-    {
-      id: 1,
-      productName: "Masa",
-      quantity: 5,
-      stations: [
-        {
-          stationName: "Kesim",
-          task: "Ahşap kesimi",
-          responsiblePerson: "saha_sorumlusu_1",
-        },
-        {
-          stationName: "Montaj",
-          task: "Parçaları birleştirme",
-          responsiblePerson: "saha_sorumlusu_2",
-        },
-      ],
-    },
-    {
-      id: 2,
-      productName: "Sandalye",
-      quantity: 10,
-      stations: [
-        {
-          stationName: "Kesim",
-          task: "Ahşap kesimi",
-          responsiblePerson: "saha_sorumlusu_3",
-        },
-        {
-          stationName: "Boyama",
-          task: "Renk uygulama",
-          responsiblePerson: "saha_sorumlusu_2",
-        },
-      ],
-    },
-  ]);
-
+  const [selectedStations, setSelectedStations] = useState([]);
   const [showProductSelection, setShowProductSelection] = useState(false);
+  const [editingStations, setEditingStations] = useState({});
+  const [isOrderComplete, setIsOrderComplete] = useState(false);
+  const [completedOrders, setCompletedOrders] = useState([]);
+  const [missingProducts, setMissingProducts] = useState([]);
 
   useEffect(() => {
     fetchProducts();
   }, []);
-
-  useEffect(() => {
-    if (editingStation) {
-      form.setFieldsValue(editingStation);
-    } else {
-      form.resetFields();
-    }
-  }, [editingStation, form]);
 
   const fetchProducts = async () => {
     try {
@@ -139,93 +91,138 @@ const Orders = () => {
     }));
 
     setStockStatus(requiredMaterials);
-
-    const missing = requiredMaterials.filter((item) => item.status === "Eksik");
-    setMissingProducts(missing);
-
-    const hasShortages = missing.length > 0;
-
-    if (hasShortages) {
-      setOrderError(
-        "Sipariş için yeterli stok bulunmuyor. Eksik malzemeleri kontrol ediniz."
-      );
-      setIsModalVisible(true);
-    } else {
-      setProductionDetails({ productName: selectedProduct.name, quantity });
-      setIsProductionModalVisible(true);
-      setOrderError(null);
-    }
+    setProductionDetails({ productName: selectedProduct.name, quantity });
+    setOrderError(null);
   };
 
   const handleCreateStations = () => {
     setIsStationModalVisible(true);
-    setEditingStation(null);
-    form.resetFields();
   };
 
-  const handleAddStation = (values) => {
-    setStations((prevStations) => [...prevStations, values]);
-    form.resetFields();
+  const handleStationSelectionChange = (selectedValues) => {
+    setSelectedStations(selectedValues);
   };
 
-  const handleEditStation = (values) => {
-    setStations((prevStations) =>
-      prevStations.map((station) =>
-        station.stationName === editingStation.stationName
-          ? { ...station, ...values }
-          : station
-      )
+  const handleAddSelectedStations = () => {
+    const newStations = selectedStations.map((stationName) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      name: stationName,
+      inputProduct: "",
+      outputProduct: "",
+      nextStation: "",
+    }));
+    setStations([...stations, ...newStations]);
+    setIsStationModalVisible(false);
+    setEditingStations(
+      newStations.reduce((acc, station) => {
+        acc[station.id] = true;
+        return acc;
+      }, {})
     );
-    setEditingStation(null);
-    form.resetFields();
   };
 
-  const handleEdit = (station) => {
-    setEditingStation(station);
-    setIsStationModalVisible(true);
+  const handleUpdateStation = (updatedStation) => {
+    setStations((prevStations) => {
+      const newStations = prevStations.map((s) =>
+        s.id === updatedStation.id ? updatedStation : s
+      );
+
+      // Sonraki istasyonun giriş ürününü güncelle
+      if (updatedStation.nextStation && updatedStation.nextStation !== "son") {
+        const nextStationIndex = newStations.findIndex(
+          (s) => s.id === updatedStation.nextStation
+        );
+        if (nextStationIndex !== -1) {
+          newStations[nextStationIndex] = {
+            ...newStations[nextStationIndex],
+            inputProduct: updatedStation.outputProduct,
+          };
+        }
+      }
+
+      // Son istasyon kontrolü
+      const lastStation = newStations.find(s => s.nextStation === "son");
+      setIsOrderComplete(!!lastStation);
+
+      return newStations;
+    });
+    setEditingStations((prev) => ({ ...prev, [updatedStation.id]: false }));
   };
 
-  const handleDeleteStation = (stationName) => {
-    setStations((prevStations) =>
-      prevStations.filter((station) => station.stationName !== stationName)
-    );
+  const handleDeleteStation = (stationId) => {
+    setStations(stations.filter((station) => station.id !== stationId));
+  };
+
+  const handleEditStation = (stationId) => {
+    setEditingStations((prev) => ({ ...prev, [stationId]: true }));
+  };
+
+  const handleCompleteOrder = () => {
+    const missingItems = stockStatus.filter(item => item.status === "Eksik");
+    if (missingItems.length > 0) {
+      setMissingProducts(missingItems);
+      setIsMissingProductsModalVisible(true);
+    } else {
+      setIsProductionModalVisible(true);
+    }
+    setCompletedOrders([...completedOrders, { product: selectedProduct, quantity, stations }]);
+    setShowProductSelection(false);
+    setStations([]);
+    setSelectedProduct(null);
+    setQuantity(1);
+    setIsOrderComplete(false);
+  };
+
+  const handleNotifyWarehouse = () => {
+    message.success("Depo görevlisine bildirim gönderildi.");
+    setIsMissingProductsModalVisible(false);
   };
 
   const handleNotifyProduction = () => {
+    message.success("Üretim görevlisine bildirim gönderildi.");
     setIsProductionModalVisible(false);
   };
+
+  // Önceden tanımlı istasyonlar
+  const predefinedStations = [
+    "Ahşap Kesim İstasyonu",
+    "Boyama İstasyonu",
+    "Birleştirme İstasyonu",
+    "Fazlalık",
+  ];
 
   return (
     <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
       <Title level={2}>İş Emirleri</Title>
 
-      {!showProductSelection && (
-        <div>
-          <Row gutter={[16, 16]}>
-            {orders.map((order) => (
-              <Col span={8} key={order.id}>
-                <Card title={`Sipariş: ${order.productName}`} bordered>
-                  <p>Miktar: {order.quantity}</p>
-                  <p>İstasyonlar:</p>
-                  <ul>
-                    {order.stations.map((station, index) => (
-                      <li
-                        key={index}
-                      >{`${station.stationName} - ${station.task} (${station.responsiblePerson})`}</li>
-                    ))}
-                  </ul>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-          <Button
-            type="primary"
-            onClick={() => setShowProductSelection(true)}
-            style={{ marginTop: "16px" }}
-          >
-            İş Emri Ver
-          </Button>
+      {completedOrders.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <Title level={3}>Tamamlanan Siparişler</Title>
+          {completedOrders.map((order, index) => (
+            <Card key={index} style={{ marginBottom: "16px" }}>
+              <p><strong>Ürün:</strong> {order.product.name}</p>
+              <p><strong>Miktar:</strong> {order.quantity}</p>
+              <p><strong>İstasyonlar:</strong></p>
+              <ul>
+                {order.stations.map((station, stationIndex) => (
+                  <li key={stationIndex}>
+                    {station.name} - Giriş: {station.inputProduct}, Çıkış: {station.outputProduct}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ))}
         </div>
+      )}
+
+      {!showProductSelection && (
+        <Button
+          type="primary"
+          onClick={() => setShowProductSelection(true)}
+          style={{ marginTop: "16px" }}
+        >
+          İş Emri Ver
+        </Button>
       )}
 
       {showProductSelection && (
@@ -287,14 +284,11 @@ const Orders = () => {
                 onChange={(value) => setQuantity(value)}
                 style={{ marginRight: "8px" }}
               />
-              <Button type="primary" onClick={handleOrder}>
-                Sipariş Ver
-              </Button>
               <Button
                 style={{ marginLeft: "8px" }}
                 onClick={handleCreateStations}
               >
-                İstasyon Oluştur
+                İstasyon Ekle
               </Button>
             </Card>
           )}
@@ -308,196 +302,179 @@ const Orders = () => {
           )}
 
           <Modal
-            title="Eksik Ürünler"
-            visible={isModalVisible}
-            onCancel={() => setIsModalVisible(false)}
+            title="İstasyon Seçimi"
+            visible={isStationModalVisible}
+            onCancel={() => setIsStationModalVisible(false)}
             footer={[
-              <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+              <Button key="cancel" onClick={() => setIsStationModalVisible(false)}>
                 Kapat
               </Button>,
-              <Button
-                key="notify"
-                type="primary"
-                onClick={() => setIsModalVisible(false)}
-              >
-                Depo Görevlisine Bildirim Gönder
+              <Button key="add" type="primary" onClick={handleAddSelectedStations}>
+                Seçilen İstasyonları Ekle
               </Button>,
             ]}
           >
-            <Table
-              dataSource={missingProducts}
-              columns={[
-                { title: "Malzeme", dataIndex: "material", key: "material" },
-                {
-                  title: "Gerekli Miktar",
-                  dataIndex: "required",
-                  key: "required",
-                },
-                {
-                  title: "Üretilmesi Gereken Miktar",
-                  dataIndex: "missing",
-                  key: "missing",
-                },
-              ]}
-              rowKey="material"
-              pagination={false}
-              size="small"
+            <Checkbox.Group
+              options={predefinedStations}
+              value={selectedStations}
+              onChange={handleStationSelectionChange}
             />
           </Modal>
 
-          <Modal
-            title="Üretim Bildirimi"
-            visible={isProductionModalVisible}
-            onCancel={() => setIsProductionModalVisible(false)}
-            footer={[
-              <Button
-                key="close"
-                onClick={() => setIsProductionModalVisible(false)}
-              >
-                Kapat
-              </Button>,
-              <Button
-                key="notify"
-                type="primary"
-                onClick={handleNotifyProduction}
-              >
-                Üretim Görevlisine Bildirim Gönder
-              </Button>,
-            ]}
-          >
-            <p>
-              <strong>Ürün:</strong> {productionDetails.productName}
-            </p>
-            <p>
-              <strong>Miktar:</strong> {productionDetails.quantity}
-            </p>
-          </Modal>
-
-          <Modal
-            title={editingStation ? "İstasyon Düzenle" : "İstasyon Oluştur"}
-            visible={isStationModalVisible}
-            onCancel={() => {
-              setIsStationModalVisible(false);
-              setEditingStation(null);
-              form.resetFields();
-            }}
-            footer={null}
-          >
-            <Form
-              form={form}
-              onFinish={(values) => {
-                if (editingStation) {
-                  handleEditStation(values);
-                } else {
-                  handleAddStation(values);
-                }
-              }}
-              layout="vertical"
-            >
-              <Form.Item
-                label="İstasyon Adı"
-                name="stationName"
-                rules={[
-                  { required: true, message: "Lütfen istasyon adını girin." },
-                ]}
-              >
-                <Input disabled={!!editingStation} />
-              </Form.Item>
-              <Form.Item
-                label="Görev"
-                name="task"
-                rules={[
-                  {
-                    required: true,
-                    message: "Lütfen görev açıklamasını girin.",
-                  },
-                ]}
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                label="Sorumlu Kişi"
-                name="responsiblePerson"
-                rules={[
-                  { required: true, message: "Lütfen sorumlu kişiyi seçin." },
-                ]}
-              >
-                <Select>
-                  {users.map((user) => (
-                    <Option key={user.id} value={user.username}>
-                      {user.username} ({user.role})
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Button type="primary" htmlType="submit">
-                {editingStation ? "Güncelle" : "İstasyon Ekle"}
-              </Button>
-              {editingStation && (
-                <Button
-                  style={{ marginLeft: 8 }}
-                  onClick={() => {
-                    setEditingStation(null);
-                    form.resetFields();
-                  }}
-                >
-                  İptal
-                </Button>
-              )}
-            </Form>
-            <div style={{ marginTop: "16px" }}>
-              <Table
-                dataSource={stations}
-                columns={[
-                  {
-                    title: "İstasyon Adı",
-                    dataIndex: "stationName",
-                    key: "stationName",
-                  },
-                  {
-                    title: "Görev",
-                    dataIndex: "task",
-                    key: "task",
-                  },
-                  {
-                    title: "Sorumlu Kişi",
-                    dataIndex: "responsiblePerson",
-                    key: "responsiblePerson",
-                  },
-                  {
-                    title: "Aksiyonlar",
-                    key: "actions",
-                    render: (text, record) => (
-                      <>
-                        <Button
-                          onClick={() => handleEdit(record)}
-                          style={{ marginRight: "8px" }}
-                        >
-                          Düzenle
+          {/* Seçilen İstasyonlar Kartları */}
+          <Row gutter={[16, 16]} style={{ marginTop: "16px" }}>
+            {stations.map((station) => (
+              <Col span={8} key={station.id}>
+                <Card title={`İstasyon: ${station.name}`} bordered>
+                  {editingStations[station.id] ? (
+                    <Form
+                      initialValues={station}
+                      onFinish={(values) => handleUpdateStation({ ...station, ...values })}
+                    >
+                      <Form.Item name="inputProduct" label="Giriş Ürünü">
+                        <Select placeholder="Giriş ürünü seçin">
+                          {selectedProduct?.recipe.map((item) => (
+                            <Option key={item.material} value={item.material}>
+                              {item.material}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item name="outputProduct" label="Çıkış Ürünü">
+                        <Select placeholder="Çıkış ürünü seçin">
+                          {selectedProduct?.recipe.map((item) => (
+                            <Option key={item.material} value={item.material}>
+                              {item.material}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item name="nextStation" label="Sonraki İstasyon">
+                        <Select placeholder="Sonraki istasyonu seçin">
+                          {stations
+                            .filter((s) => s.id !== station.id)
+                            .map((s) => (
+                              <Option key={s.id} value={s.id}>
+                                {s.name}
+                              </Option>
+                            ))}
+                          <Option value="son">Son İstasyon</Option>
+                        </Select>
+                      </Form.Item>
+                      <Button type="primary" htmlType="submit">
+                        Tamam
+                      </Button>
+                    </Form>
+                  ) : (
+                    <>
+                      <p>Giriş Ürünü: {station.inputProduct}</p>
+                      <p>Çıkış Ürünü: {station.outputProduct}</p>
+                      <p>Sonraki İstasyon: {station.nextStation === "son" ? "Son İstasyon" : stations.find(s => s.id === station.nextStation)?.name}</p>
+                      <Button onClick={() => handleEditStation(station.id)}>Düzenle</Button>
+                      <Popconfirm
+                        title="Bu istasyonu silmek istediğinizden emin misiniz?"
+                        onConfirm={() => handleDeleteStation(station.id)}
+                        okText="Evet"
+                        cancelText="Hayır"
+                      >
+                        <Button danger style={{ marginLeft: "8px" }}>
+                          Sil
                         </Button>
-                        <Popconfirm
-                          title="Bu istasyonu silmek istediğinizden emin misiniz?"
-                          onConfirm={() =>
-                            handleDeleteStation(record.stationName)
-                          }
-                          okText="Evet"
-                          cancelText="Hayır"
-                        >
-                          <Button danger>Sil</Button>
-                        </Popconfirm>
-                      </>
-                    ),
-                  },
-                ]}
-                rowKey="stationName"
-                pagination={false}
-              />
-            </div>
-          </Modal>
+                      </Popconfirm>
+                    </>
+                  )}
+                </Card>
+              </Col>
+            ))}
+          </Row>
+
+          {isOrderComplete && (
+            <Button
+              type="primary"
+              onClick={handleCompleteOrder}
+              style={{ marginTop: "16px" }}
+            >
+              Siparişi Tamamla
+            </Button>
+          )}
         </>
       )}
+
+      <Modal
+        title="Eksik Ürünler"
+        visible={isMissingProductsModalVisible}
+        onCancel={() => setIsMissingProductsModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsMissingProductsModalVisible(false)}>
+            Kapat
+          </Button>,
+          <Button
+            key="notify"
+            type="primary"
+            onClick={handleNotifyWarehouse}
+          >
+            Depo Görevlisine Bildirim Gönder
+          </Button>,
+        ]}
+      >
+        <p>Aşağıdaki ürünler stokta eksik. Depo görevlisine bildirim gönderildi.</p>
+        <Table
+          dataSource={missingProducts}
+          columns={[
+            { title: "Malzeme", dataIndex: "material", key: "material" },
+            {
+              title: "Gerekli Miktar",
+              dataIndex: "required",
+              key: "required",
+            },
+            {
+              title: "Eksik Miktar",
+              dataIndex: "missing",
+              key: "missing",
+            },
+          ]}
+          rowKey="material"
+          pagination={false}
+          size="small"
+        />
+      </Modal>
+
+      <Modal
+        title="Üretim Bildirimi"
+        visible={isProductionModalVisible}
+        onCancel={() => setIsProductionModalVisible(false)}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => setIsProductionModalVisible(false)}
+          >
+            Kapat
+          </Button>,
+        ]}
+      >
+        <p>Tüm ürünler stokta mevcut. Üretim görevlisine bildirim gönderildi.</p>
+      </Modal>
     </div>
   );
 };
 
 export default Orders;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
