@@ -1,0 +1,32 @@
+/* Navbar Menü Seçenekleri */
+.ant-menu-dark .ant-menu-item {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    transition: all 0.3s ease;
+  }
+  
+  .ant-menu-dark .ant-menu-item:hover {
+    background-color: #1677FF !important; /* Hover rengi */
+    border-radius: 8px !important; /* Oval görünüm */
+    color: white !important;
+  }
+  
+
+  .menu-item a {
+    font-size: 14px !important; /* Menü yazı boyutu */
+  }
+  
+
+  .stations-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  
+  .station-card {
+    width: 300px;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
