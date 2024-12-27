@@ -31,8 +31,10 @@ const Orders = () => {
   const [quantity, setQuantity] = useState(1);
   const [stockStatus, setStockStatus] = useState([]);
   const [orderError, setOrderError] = useState(null);
-  const [isProductionModalVisible, setIsProductionModalVisible] = useState(false);
-  const [isMissingProductsModalVisible, setIsMissingProductsModalVisible] = useState(false);
+  const [isProductionModalVisible, setIsProductionModalVisible] =
+    useState(false);
+  const [isMissingProductsModalVisible, setIsMissingProductsModalVisible] =
+    useState(false);
   const [productionDetails, setProductionDetails] = useState({});
   const [isStationModalVisible, setIsStationModalVisible] = useState(false);
   const [stations, setStations] = useState([]);
@@ -40,7 +42,8 @@ const Orders = () => {
   const [showProductSelection, setShowProductSelection] = useState(false);
   const [editingStations, setEditingStations] = useState({});
   const [isOrderComplete, setIsOrderComplete] = useState(false);
-  const [completedOrders, setCompletedOrders] = useState([]);
+  const [completedOrders, setCompletedOrders] = useState([
+]);
   const [missingProducts, setMissingProducts] = useState([]);
 
   useEffect(() => {
@@ -107,8 +110,8 @@ const Orders = () => {
     const newStations = selectedStations.map((stationName) => ({
       id: Math.random().toString(36).substr(2, 9),
       name: stationName,
-      inputProduct: "",
-      outputProduct: "",
+      inputProducts: [],
+      outputProducts: [],
       nextStation: "",
     }));
     setStations([...stations, ...newStations]);
@@ -124,7 +127,13 @@ const Orders = () => {
   const handleUpdateStation = (updatedStation) => {
     setStations((prevStations) => {
       const newStations = prevStations.map((s) =>
-        s.id === updatedStation.id ? updatedStation : s
+        s.id === updatedStation.id
+          ? {
+              ...updatedStation,
+              inputProduct: updatedStation.inputProducts.join(", "),
+              outputProduct: updatedStation.outputProducts.join(", "),
+            }
+          : s
       );
 
       // Sonraki istasyonun giriş ürününü güncelle
@@ -135,13 +144,13 @@ const Orders = () => {
         if (nextStationIndex !== -1) {
           newStations[nextStationIndex] = {
             ...newStations[nextStationIndex],
-            inputProduct: updatedStation.outputProduct,
+            inputProduct: updatedStation.outputProducts.join(", "),
           };
         }
       }
 
       // Son istasyon kontrolü
-      const lastStation = newStations.find(s => s.nextStation === "son");
+      const lastStation = newStations.find((s) => s.nextStation === "son");
       setIsOrderComplete(!!lastStation);
 
       return newStations;
@@ -158,14 +167,17 @@ const Orders = () => {
   };
 
   const handleCompleteOrder = () => {
-    const missingItems = stockStatus.filter(item => item.status === "Eksik");
+    const missingItems = stockStatus.filter((item) => item.status === "Eksik");
     if (missingItems.length > 0) {
       setMissingProducts(missingItems);
       setIsMissingProductsModalVisible(true);
     } else {
       setIsProductionModalVisible(true);
     }
-    setCompletedOrders([...completedOrders, { product: selectedProduct, quantity, stations }]);
+    setCompletedOrders([
+      ...completedOrders,
+      { product: selectedProduct, quantity, stations },
+    ]);
     setShowProductSelection(false);
     setStations([]);
     setSelectedProduct(null);
@@ -191,7 +203,7 @@ const Orders = () => {
     "Fazlalık",
   ];
 
-  const completed = [
+    const completed = [
     {
       "product": {
         "id": 1,
@@ -278,14 +290,11 @@ const Orders = () => {
     }
   ]
   console.log(completedOrders);
+
   return (
     <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
       <Title level={2}>İş Emirleri</Title>
-
-
-
-
-      {!showProductSelection && (
+       {!showProductSelection && (
         <Button
           type="primary"
           onClick={() => setShowProductSelection(true)}
@@ -376,10 +385,17 @@ const Orders = () => {
             visible={isStationModalVisible}
             onCancel={() => setIsStationModalVisible(false)}
             footer={[
-              <Button key="cancel" onClick={() => setIsStationModalVisible(false)}>
+              <Button
+                key="cancel"
+                onClick={() => setIsStationModalVisible(false)}
+              >
                 Kapat
               </Button>,
-              <Button key="add" type="primary" onClick={handleAddSelectedStations}>
+              <Button
+                key="add"
+                type="primary"
+                onClick={handleAddSelectedStations}
+              >
                 Seçilen İstasyonları Ekle
               </Button>,
             ]}
@@ -399,26 +415,112 @@ const Orders = () => {
                   {editingStations[station.id] ? (
                     <Form
                       initialValues={station}
-                      onFinish={(values) => handleUpdateStation({ ...station, ...values })}
+                      onFinish={(values) =>
+                        handleUpdateStation({ ...station, ...values })
+                      }
                     >
-                      <Form.Item name="inputProduct" label="Giriş Ürünü">
-                        <Select placeholder="Giriş ürünü seçin">
-                          {selectedProduct?.recipe.map((item) => (
-                            <Option key={item.material} value={item.material}>
-                              {item.material}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                      <Form.Item name="outputProduct" label="Çıkış Ürünü">
-                        <Select placeholder="Çıkış ürünü seçin">
-                          {selectedProduct?.recipe.map((item) => (
-                            <Option key={item.material} value={item.material}>
-                              {item.material}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
+                      <Form.List name="inputProducts">
+                        {(fields, { add, remove }) => (
+                          <>
+                            {fields.map((field, index) => (
+                              <Form.Item required={false} key={field.key}>
+                                <Form.Item
+                                  {...field}
+                                  validateTrigger={["onChange", "onBlur"]}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      whitespace: true,
+                                      message:
+                                        "Lütfen giriş ürünü seçin veya silin",
+                                    },
+                                  ]}
+                                  noStyle
+                                >
+                                  <Select
+                                    style={{ width: "60%" }}
+                                    placeholder="Giriş ürünü seçin"
+                                  >
+                                    {selectedProduct?.recipe.map((item) => (
+                                      <Option
+                                        key={item.material}
+                                        value={item.material}
+                                      >
+                                        {item.material}
+                                      </Option>
+                                    ))}
+                                  </Select>
+                                </Form.Item>
+                                {fields.length > 1 ? (
+                                  <Button
+                                    type="link"
+                                    onClick={() => remove(field.name)}
+                                    style={{ marginLeft: "10px" }}
+                                  >
+                                    Sil
+                                  </Button>
+                                ) : null}
+                              </Form.Item>
+                            ))}
+                            <Form.Item>
+                              <Button type="dashed" onClick={() => add()} block>
+                                Giriş Ürünü Ekle
+                              </Button>
+                            </Form.Item>
+                          </>
+                        )}
+                      </Form.List>
+                      <Form.List name="outputProducts">
+                        {(fields, { add, remove }) => (
+                          <>
+                            {fields.map((field, index) => (
+                              <Form.Item required={false} key={field.key}>
+                                <Form.Item
+                                  {...field}
+                                  validateTrigger={["onChange", "onBlur"]}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      whitespace: true,
+                                      message:
+                                        "Lütfen çıkış ürünü seçin veya silin",
+                                    },
+                                  ]}
+                                  noStyle
+                                >
+                                  <Select
+                                    style={{ width: "60%" }}
+                                    placeholder="Çıkış ürünü seçin"
+                                  >
+                                    {selectedProduct?.recipe.map((item) => (
+                                      <Option
+                                        key={item.material}
+                                        value={item.material}
+                                      >
+                                        {item.material}
+                                      </Option>
+                                    ))}
+                                  </Select>
+                                </Form.Item>
+                                {fields.length > 1 ? (
+                                  <Button
+                                    type="link"
+                                    onClick={() => remove(field.name)}
+                                    style={{ marginLeft: "10px" }}
+                                  >
+                                    Sil
+                                  </Button>
+                                ) : null}
+                              </Form.Item>
+                            ))}
+                            <Form.Item>
+                              <Button type="dashed" onClick={() => add()} block>
+                                Çıkış Ürünü Ekle
+                              </Button>
+                            </Form.Item>
+                          </>
+                        )}
+                      </Form.List>
                       <Form.Item name="nextStation" label="Sonraki İstasyon">
                         <Select placeholder="Sonraki istasyonu seçin">
                           {stations
@@ -437,10 +539,24 @@ const Orders = () => {
                     </Form>
                   ) : (
                     <>
-                      <p>Giriş Ürünü: {station.inputProduct}</p>
-                      <p>Çıkış Ürünü: {station.outputProduct}</p>
-                      <p>Sonraki İstasyon: {station.nextStation === "son" ? "Son İstasyon" : stations.find(s => s.id === station.nextStation)?.name}</p>
-                      <Button onClick={() => handleEditStation(station.id)}>Düzenle</Button>
+                      <p>
+                        Giriş Ürünleri:{" "}
+                        {station.inputProduct.split(", ").join(", ")}
+                      </p>
+                      <p>
+                        Çıkış Ürünleri:{" "}
+                        {station.outputProduct.split(", ").join(", ")}
+                      </p>
+                      <p>
+                        Sonraki İstasyon:{" "}
+                        {station.nextStation === "son"
+                          ? "Son İstasyon"
+                          : stations.find((s) => s.id === station.nextStation)
+                              ?.name}
+                      </p>
+                      <Button onClick={() => handleEditStation(station.id)}>
+                        Düzenle
+                      </Button>
                       <Popconfirm
                         title="Bu istasyonu silmek istediğinizden emin misiniz?"
                         onConfirm={() => handleDeleteStation(station.id)}
@@ -475,38 +591,18 @@ const Orders = () => {
         visible={isMissingProductsModalVisible}
         onCancel={() => setIsMissingProductsModalVisible(false)}
         footer={[
-          <Button key="cancel" onClick={() => setIsMissingProductsModalVisible(false)}>
+          <Button
+            key="cancel"
+            onClick={() => setIsMissingProductsModalVisible(false)}
+          >
             Kapat
           </Button>,
-          <Button
-            key="notify"
-            type="primary"
-            onClick={handleNotifyWarehouse}
-          >
-            Depo Görevlisine Bildirim Gönder
-          </Button>,
+
         ]}
       >
-        <p>Aşağıdaki ürünler stokta eksik. Depo görevlisine bildirim gönderildi.</p>
-        <Table
-          dataSource={missingProducts}
-          columns={[
-            { title: "Malzeme", dataIndex: "material", key: "material" },
-            {
-              title: "Gerekli Miktar",
-              dataIndex: "required",
-              key: "required",
-            },
-            {
-              title: "Eksik Miktar",
-              dataIndex: "missing",
-              key: "missing",
-            },
-          ]}
-          rowKey="material"
-          pagination={false}
-          size="small"
-        />
+        <p>
+          Stokta eksik ürün var. Depo görevlisine bildirim gönderildi.
+        </p>
       </Modal>
 
       <Modal
@@ -522,13 +618,14 @@ const Orders = () => {
           </Button>,
         ]}
       >
-        <p>Tüm ürünler stokta mevcut. Üretim görevlisine bildirim gönderildi.</p>
+        <p>
+          Tüm ürünler stokta mevcut. Üretim görevlisine bildirim gönderildi.
+        </p>
       </Modal>
-
       <br />
-      <br />
+       <br />
 
-      {completedOrders.length > 0 && (
+     {completedOrders.length > 0 && (
         <div style={{ marginBottom: "24px" }}>
           {completedOrders.map((order, index) => (
             <Card key={index} style={{ marginBottom: "16px" }}>
@@ -565,28 +662,10 @@ const Orders = () => {
           ))}
         </div>
       )}
-
     </div>
   );
 };
 
 export default Orders;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
